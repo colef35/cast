@@ -17,6 +17,9 @@ class Channel(str, Enum):
     reddit = "reddit"
     linkedin = "linkedin"
     twitter = "twitter"
+    web = "web"
+    youtube = "youtube"
+    forum = "forum"
 
 
 class Opportunity(BaseModel):
