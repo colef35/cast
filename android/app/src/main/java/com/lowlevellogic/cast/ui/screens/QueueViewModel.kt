@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lowlevellogic.cast.data.api.CastApi
 import com.lowlevellogic.cast.data.models.Opportunity
+import com.lowlevellogic.cast.data.prefs.UserPrefs
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,9 +20,10 @@ sealed class QueueState {
 @HiltViewModel
 class QueueViewModel @Inject constructor(
     private val api: CastApi,
+    private val prefs: UserPrefs,
 ) : ViewModel() {
 
-    private val userId = "TODO_replace_with_real_user_id"
+    private val userId get() = prefs.userId
 
     private val _state = MutableStateFlow<QueueState>(QueueState.Loading)
     val state: StateFlow<QueueState> = _state

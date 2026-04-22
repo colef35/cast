@@ -1,6 +1,7 @@
 package com.lowlevellogic.cast.di
 
 import com.lowlevellogic.cast.data.api.CastApi
+import com.lowlevellogic.cast.data.prefs.UserPrefs
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,8 +17,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(): Retrofit = Retrofit.Builder()
-        .baseUrl("https://your-cast-api.com/")  // replace with real URL
+    fun provideRetrofit(prefs: UserPrefs): Retrofit = Retrofit.Builder()
+        .baseUrl(prefs.apiUrl.trimEnd('/') + "/")
         .client(OkHttpClient.Builder().build())
         .addConverterFactory(GsonConverterFactory.create())
         .build()
