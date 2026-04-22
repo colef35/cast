@@ -7,17 +7,22 @@ import uuid
 from datetime import datetime
 from app.core.database import get_db, init_db
 
-_use_supabase = bool(os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY"))
+_supabase_client = None
+_use_supabase = False
 
-if _use_supabase:
-    from supabase import create_client as _create_client
-    _supabase_client = _create_client(
-        os.environ["SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_KEY"],
-    )
-else:
+if os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_KEY"):
+    try:
+        from supabase import create_client as _create_client
+        _supabase_client = _create_client(
+            os.environ["SUPABASE_URL"],
+            os.environ["SUPABASE_SERVICE_KEY"],
+        )
+        _use_supabase = True
+    except Exception as e:
+        print(f"[WARN] Supabase init failed ({e}), falling back to SQLite")
+
+if not _use_supabase:
     init_db()
-    _supabase_client = None
 
 
 class _SQLiteTable:
