@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.iml
+.gradle/
+local.properties
+android/.idea/
+android/build/
+android/app/build/
