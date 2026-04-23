@@ -5,8 +5,8 @@ from app.models.product_profile import ProductProfile
 from app.services.datum_profile import DATUM_PROFILE
 
 UA = "Mozilla/5.0 (compatible; cast-bot/0.1)"
-MIN_SCORE = 2
-MIN_COMMENTS = 1
+MIN_SCORE = 0
+MIN_COMMENTS = 0
 
 
 async def scan_reddit(product: ProductProfile) -> list[OpportunityCreate]:
@@ -17,8 +17,8 @@ async def scan_reddit(product: ProductProfile) -> list[OpportunityCreate]:
     seen = set()
 
     async with httpx.AsyncClient(headers={"User-Agent": UA}, timeout=15) as client:
-        for subreddit in subreddits[:6]:
-            for keyword in keywords[:3]:
+        for subreddit in subreddits[:8]:
+            for keyword in keywords[:4]:
                 try:
                     resp = await client.get(
                         f"https://www.reddit.com/r/{subreddit}/search.json",

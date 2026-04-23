@@ -59,7 +59,7 @@ def score_and_draft(product: ProductProfile, opp: OpportunityCreate) -> tuple[fl
     draft = _build_draft(product, opp)
 
     # Upgrade to AI if key available
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
         try:
             relevance, roi, draft = _ai_score_and_draft(api_key, product, opp)
@@ -70,9 +70,8 @@ def score_and_draft(product: ProductProfile, opp: OpportunityCreate) -> tuple[fl
 
 
 def _ai_score_and_draft(api_key: str, product: ProductProfile, opp: OpportunityCreate) -> tuple[float, float, str]:
-    import google.generativeai as genai
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    import anthropic
+    client = anthropic.Anthropic(api_key=api_key)
 
     combined = opp.source_title + " " + opp.source_body
     feature = detect_feature(combined)
@@ -103,15 +102,26 @@ ROI: <0.0-1.0>
 DRAFT:
 <reply>"""
 
-    text = model.generate_content(prompt).text
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = message.content[0].text
     lines = text.strip().split("\n")
     relevance = roi = 0.5
     draft_lines, in_draft = [], False
     for line in lines:
         if line.startswith("RELEVANCE:"):
-            relevance = float(line.split(":")[1].strip())
+            try:
+                relevance = float(line.split(":")[1].strip())
+            except Exception:
+                pass
         elif line.startswith("ROI:"):
-            roi = float(line.split(":")[1].strip())
+            try:
+                roi = float(line.split(":")[1].strip())
+            except Exception:
+                pass
         elif line.startswith("DRAFT:"):
             in_draft = True
         elif in_draft:
