@@ -24,15 +24,13 @@ def health():
 
 @app.get("/debug/reddit")
 async def debug_reddit():
-    import httpx
+    from app.services.reddit_session import reddit_get
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get(
-                "https://www.reddit.com/r/construction/search.json",
-                params={"q": "construction software", "sort": "new", "limit": 3},
-                headers={"User-Agent": "Mozilla/5.0 (compatible; cast-bot/0.1)"},
-            )
-            return {"status": r.status_code, "posts": len(r.json().get("data", {}).get("children", []))}
+        r = await reddit_get(
+            "https://www.reddit.com/r/construction/search.json",
+            params={"q": "construction software", "sort": "new", "limit": 3},
+        )
+        return {"status": r.status_code, "posts": len(r.json().get("data", {}).get("children", []))}
     except Exception as e:
         return {"error": str(e)}
 
