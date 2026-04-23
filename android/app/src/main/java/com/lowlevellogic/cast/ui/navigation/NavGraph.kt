@@ -6,7 +6,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.padding
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -51,7 +53,7 @@ fun CastNavGraph() {
         }
     ) { padding ->
         NavHost(navController, startDestination = Screen.Stats.route,
-            androidx.compose.ui.Modifier.padding(padding)) {
+            modifier = Modifier.padding(padding)) {
             composable(Screen.Stats.route) { StatsScreen() }
             composable(Screen.Queue.route) { QueueScreen() }
             composable(Screen.Settings.route) { SettingsScreen() }
