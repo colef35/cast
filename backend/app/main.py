@@ -65,6 +65,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/debug/hn-post")
+async def debug_hn_post():
+    """Test posting a comment to a known HN thread."""
+    from app.services.hn_poster import post_comment
+    try:
+        url = await post_comment(
+            "https://news.ycombinator.com/item?id=43963963",
+            "Test — ignore. Construction management software for contractors: https://lowlevellogic.org"
+        )
+        return {"status": "ok", "url": url}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
 @app.get("/stats")
 def stats():
     from app.core.supabase import get_supabase

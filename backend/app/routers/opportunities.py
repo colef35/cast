@@ -55,6 +55,8 @@ async def send_all(user_id: UUID):
 
 
 async def _run_send_all(user_id: str):
+    import logging
+    log = logging.getLogger("send_all")
     from app.core.supabase import get_supabase
     db = get_supabase()
     result = (
@@ -65,17 +67,24 @@ async def _run_send_all(user_id: str):
         .execute()
     )
 
-    for opp in (result.data or []):
+    opps = result.data or []
+    log.warning(f"[send_all] Starting — {len(opps)} pending opportunities")
+    sent = 0
+    for opp in opps:
         if not opp.get("draft") or not opp.get("source_url"):
             continue
-        await asyncio.sleep(4)  # rate limit between posts
+        await asyncio.sleep(4)
         try:
             posted = await _post_opp(opp)
             if posted:
                 from uuid import UUID
                 await service.set_status(UUID(opp["id"]), UUID(user_id), OpportunityStatus.sent)
-        except Exception:
-            pass
+                sent += 1
+                log.warning(f"[send_all] Sent {sent}: {opp['source_url'][:60]}")
+            else:
+                log.warning(f"[send_all] Skipped (no poster): channel={opp.get('channel')} url={opp['source_url'][:60]}")
+        except Exception as e:
+            log.warning(f"[send_all] FAILED {opp['source_url'][:60]}: {e}")
 
 
 async def _post_opp(opp: dict) -> bool:
