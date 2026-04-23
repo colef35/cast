@@ -49,35 +49,33 @@ async def send(opp_id: UUID, user_id: UUID):
 
 @router.post("/send-all", response_model=dict)
 async def send_all(user_id: UUID):
-    """Send all pending opportunities across all channels."""
+    """Fire-and-forget: kicks off background sending, returns immediately."""
+    asyncio.create_task(_run_send_all(str(user_id)))
+    return {"status": "started", "message": "Sending in background — check /stats for progress"}
+
+
+async def _run_send_all(user_id: str):
     from app.core.supabase import get_supabase
     db = get_supabase()
     result = (
         db.table("opportunities")
         .select("*")
-        .eq("user_id", str(user_id))
+        .eq("user_id", user_id)
         .eq("status", "pending")
         .execute()
     )
 
-    sent, failed, skipped = 0, 0, 0
     for opp in (result.data or []):
         if not opp.get("draft") or not opp.get("source_url"):
-            skipped += 1
             continue
-        # Rate limit — don't hammer platforms
-        await asyncio.sleep(3)
+        await asyncio.sleep(4)  # rate limit between posts
         try:
             posted = await _post_opp(opp)
             if posted:
-                await service.set_status(opp["id"], user_id, OpportunityStatus.sent)
-                sent += 1
-            else:
-                skipped += 1
+                from uuid import UUID
+                await service.set_status(UUID(opp["id"]), UUID(user_id), OpportunityStatus.sent)
         except Exception:
-            failed += 1
-
-    return {"sent": sent, "failed": failed, "skipped": skipped}
+            pass
 
 
 async def _post_opp(opp: dict) -> bool:
