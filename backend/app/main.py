@@ -2,12 +2,55 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.routers import products, opportunities, scan, billing
 from app.core.database import init_db
+import asyncio
+
+
+async def _auto_scan_loop():
+    """Runs a full scan every 6 hours automatically."""
+    await asyncio.sleep(60)  # wait 1 min after startup before first scan
+    while True:
+        try:
+            from app.core.supabase import get_supabase
+            from app.services.product_service import ProductService
+            from app.services.opportunity_service import OpportunityService
+            from app.services.scanners.hn_scanner import scan_hn
+            from app.services.scanners.web_scanner import scan_web
+            from app.services.scanners.youtube_scanner import scan_youtube
+            from app.services.scanners.forum_scanner import scan_forums
+
+            db = get_supabase()
+            products_data = db.table("product_profiles").select("*").execute().data or []
+
+            opp_service = OpportunityService()
+            for p_row in products_data:
+                from app.models.product_profile import ProductProfile
+                product = ProductProfile(**p_row)
+                raw_lists = await asyncio.gather(
+                    scan_hn(product),
+                    scan_web(product),
+                    scan_youtube(product),
+                    scan_forums(product),
+                    return_exceptions=True,
+                )
+                for raw in raw_lists:
+                    if isinstance(raw, Exception):
+                        continue
+                    for opp_create in raw:
+                        try:
+                            await opp_service.ingest(opp_create)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+        await asyncio.sleep(6 * 3600)  # run every 6 hours
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    asyncio.create_task(_auto_scan_loop())
     yield
+
 
 app = FastAPI(title="CAST API", version="0.1.0", lifespan=lifespan)
 
@@ -20,19 +63,6 @@ app.include_router(billing.router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
-@app.get("/debug/reddit")
-async def debug_reddit():
-    from app.services.reddit_session import reddit_get
-    try:
-        r = await reddit_get(
-            "https://www.reddit.com/r/construction/search.json",
-            params={"q": "construction software", "sort": "new", "limit": 3},
-        )
-        return {"status": r.status_code, "posts": len(r.json().get("data", {}).get("children", []))}
-    except Exception as e:
-        return {"error": str(e)}
 
 
 @app.get("/stats")
