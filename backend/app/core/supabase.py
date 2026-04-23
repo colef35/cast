@@ -39,17 +39,8 @@ class _SQLiteTable:
     def insert(self, row: dict):
         if "id" not in row:
             row["id"] = str(uuid.uuid4())
-        conn = get_db()
-        cols = ", ".join(row.keys())
-        vals = ", ".join(["?" for _ in row])
-        conn.execute(f"INSERT INTO {self.table} ({cols}) VALUES ({vals})", [
-            json.dumps(v) if isinstance(v, (list, dict)) else v
-            for v in row.values()
-        ])
-        conn.commit()
-        result = conn.execute(f"SELECT * FROM {self.table} WHERE id=?", [row["id"]]).fetchone()
-        conn.close()
-        return _SQLiteResult([_row_to_dict(result, self.table)])
+        self._insert_row = row
+        return self
 
     def update(self, updates: dict):
         self._updates = updates
@@ -77,6 +68,19 @@ class _SQLiteTable:
         where = " AND ".join([f"{c}=?" for c, _ in self._filters])
         where_clause = f"WHERE {where}" if where else ""
         vals = [v for _, v in self._filters]
+
+        if hasattr(self, "_insert_row"):
+            row = self._insert_row
+            cols = ", ".join(row.keys())
+            placeholders = ", ".join(["?" for _ in row])
+            conn.execute(f"INSERT INTO {self.table} ({cols}) VALUES ({placeholders})", [
+                json.dumps(v) if isinstance(v, (list, dict)) else v
+                for v in row.values()
+            ])
+            conn.commit()
+            result = conn.execute(f"SELECT * FROM {self.table} WHERE id=?", [row["id"]]).fetchone()
+            conn.close()
+            return _SQLiteResult([_row_to_dict(result, self.table)])
 
         if hasattr(self, "_delete"):
             rows = conn.execute(f"SELECT * FROM {self.table} {where_clause}", vals).fetchall()
