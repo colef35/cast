@@ -77,6 +77,29 @@ async def scan_forums_endpoint(product_id: UUID, user_id: UUID):
     return results
 
 
+@router.delete("/purge-old", response_model=dict)
+async def purge_old_leads(user_id: UUID, days: int = 30):
+    """Delete pending HN leads older than `days` days — they can't be posted to anyway."""
+    from app.core.supabase import get_supabase
+    from datetime import datetime, timedelta
+    db = get_supabase()
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    rows = (
+        db.table("opportunities")
+        .select("id")
+        .eq("user_id", str(user_id))
+        .eq("status", "pending")
+        .eq("channel", "hackernews")
+        .lt("created_at", cutoff)
+        .execute()
+    ).data or []
+    deleted = 0
+    for row in rows:
+        db.table("opportunities").delete().eq("id", row["id"]).execute()
+        deleted += 1
+    return {"deleted": deleted, "cutoff": cutoff}
+
+
 @router.post("/all/{product_id}", response_model=list[Opportunity])
 async def scan_all(product_id: UUID, user_id: UUID):
     product = await product_service.get(product_id, user_id)

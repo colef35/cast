@@ -1,11 +1,14 @@
 import httpx
+import time
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
 from app.services.datum_profile import DATUM_PROFILE
+from app.core.proxy import proxy_kwargs
 
 ALGOLIA_URL = "https://hn.algolia.com/api/v1/search"
 MIN_POINTS = 2
 MIN_COMMENTS = 1
+MAX_AGE_DAYS = 30  # only grab threads from the last 30 days (comment form still visible)
 
 CONSTRUCTION_SIGNALS = [
     "construction", "excavat", "grading", "earthwork", "job cost",
@@ -34,15 +37,17 @@ def _is_relevant(title: str, body: str) -> bool:
 async def scan_hn(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
 
-    async with httpx.AsyncClient() as client:
+    cutoff = int(time.time()) - MAX_AGE_DAYS * 86400
+
+    async with httpx.AsyncClient(**proxy_kwargs()) as client:
         for query in DATUM_PROFILE["hn_queries"]:
             for tag in ["story", "ask_hn"]:
                 try:
                     resp = await client.get(ALGOLIA_URL, params={
                         "query": query,
                         "tags": tag,
-                        "numericFilters": f"points>={MIN_POINTS},num_comments>={MIN_COMMENTS}",
-                        "hitsPerPage": 10,
+                        "numericFilters": f"points>={MIN_POINTS},num_comments>={MIN_COMMENTS},created_at_i>{cutoff}",
+                        "hitsPerPage": 20,
                     })
                     resp.raise_for_status()
                     for hit in resp.json().get("hits", []):
