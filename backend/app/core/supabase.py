@@ -51,7 +51,27 @@ class _SQLiteTable:
         return self
 
     def eq(self, col, val):
-        self._filters.append((col, val))
+        self._filters.append((col, "=", val))
+        return self
+
+    def neq(self, col, val):
+        self._filters.append((col, "!=", val))
+        return self
+
+    def lt(self, col, val):
+        self._filters.append((col, "<", val))
+        return self
+
+    def lte(self, col, val):
+        self._filters.append((col, "<=", val))
+        return self
+
+    def gt(self, col, val):
+        self._filters.append((col, ">", val))
+        return self
+
+    def gte(self, col, val):
+        self._filters.append((col, ">=", val))
         return self
 
     def order(self, col, desc=False):
@@ -65,9 +85,9 @@ class _SQLiteTable:
 
     def execute(self):
         conn = get_db()
-        where = " AND ".join([f"{c}=?" for c, _ in self._filters])
+        where = " AND ".join([f"{c}{op}?" for c, op, _ in self._filters])
         where_clause = f"WHERE {where}" if where else ""
-        vals = [v for _, v in self._filters]
+        vals = [v for _, _, v in self._filters]
 
         if hasattr(self, "_insert_row"):
             row = self._insert_row
