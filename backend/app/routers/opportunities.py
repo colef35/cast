@@ -67,12 +67,18 @@ async def _run_send_all(user_id: str):
         .execute()
     )
 
+    import os
     opps = result.data or []
-    log.warning(f"[send_all] Starting — {len(opps)} pending opportunities")
+    yt_enabled = bool(os.environ.get("YOUTUBE_REFRESH_TOKEN"))
+    # Filter to channels we can actually post to
+    postable = [o for o in opps if
+        o.get("draft") and o.get("source_url") and
+        (o.get("channel") == "hackernews" or
+         (o.get("channel") == "youtube" and yt_enabled))
+    ]
+    log.warning(f"[send_all] Starting — {len(postable)} postable (of {len(opps)} total)")
     sent = 0
-    for opp in opps:
-        if not opp.get("draft") or not opp.get("source_url"):
-            continue
+    for opp in postable:
         await asyncio.sleep(4)
         try:
             posted = await _post_opp(opp)

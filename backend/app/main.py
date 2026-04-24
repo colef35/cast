@@ -40,9 +40,16 @@ async def _auto_scan_loop():
                             await opp_service.ingest(opp_create)
                         except Exception:
                             pass
+            # Auto-send after each scan cycle
+            try:
+                from app.routers.opportunities import _run_send_all
+                for p_row in products_data:
+                    await _run_send_all(str(p_row["user_id"]))
+            except Exception:
+                pass
         except Exception:
             pass
-        await asyncio.sleep(6 * 3600)  # run every 6 hours
+        await asyncio.sleep(2 * 3600)  # run every 2 hours
 
 
 @asynccontextmanager
