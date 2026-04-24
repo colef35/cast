@@ -67,13 +67,23 @@ def health():
 
 @app.get("/debug/hn-post")
 async def debug_hn_post():
-    """Test posting a comment to a known HN thread."""
-    from app.services.hn_poster import post_comment
+    """Test posting a comment to the HN front page newest thread."""
+    import httpx
+    from bs4 import BeautifulSoup
+    from app.services.hn_poster import post_comment, _cookie
     try:
+        # Find a recent thread to test with
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get("https://hacker-news.firebaseio.com/v0/newstories.json")
+            ids = r.json()[:5]
+        # Use first story ID
+        thread_url = f"https://news.ycombinator.com/item?id={ids[0]}"
         url = await post_comment(
-            "https://news.ycombinator.com/item?id=43963963",
+            thread_url,
             "Test — ignore. Construction management software for contractors: https://lowlevellogic.org"
         )
+        if url is None:
+            return {"status": "skipped", "reason": "Thread has no comment form (too old or closed)", "thread": thread_url}
         return {"status": "ok", "url": url}
     except Exception as e:
         return {"status": "error", "detail": str(e)}

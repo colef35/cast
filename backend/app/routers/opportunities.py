@@ -98,8 +98,8 @@ async def _post_opp(opp: dict) -> bool:
 
     if channel == "hackernews":
         from app.services.hn_poster import post_comment
-        await post_comment(source_url, draft)
-        return True
+        result = await post_comment(source_url, draft)
+        return result is not None  # None means thread too old, skip
 
     if channel == "reddit":
         import os

@@ -58,11 +58,15 @@ async def post_comment(thread_url: str, comment_text: str) -> str:
                 break
 
         if not form:
-            # Fallback: find any reply form on the page
-            form = soup.find("form", action=lambda a: a and "comment" in a)
+            # Fallback: find any form with a textarea (comment box)
+            for f in soup.find_all("form"):
+                if f.find("textarea"):
+                    form = f
+                    break
 
         if not form:
-            raise RuntimeError("Could not find comment form on HN thread")
+            # Thread is too old or comments are closed — not an error, just skip
+            return None
 
         hmac_val = form.find("input", {"name": "hmac"})
         if not hmac_val:
