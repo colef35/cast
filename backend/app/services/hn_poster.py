@@ -5,6 +5,7 @@ import os
 import re
 import httpx
 from bs4 import BeautifulSoup
+from app.core.proxy import proxy_kwargs
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 
@@ -41,7 +42,7 @@ async def post_comment(thread_url: str, comment_text: str) -> str:
         "Referer": thread_url,
     }
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20, **proxy_kwargs()) as client:
         # Fetch the thread to get the hmac token for the top-level comment form
         resp = await client.get(f"https://news.ycombinator.com/item?id={item_id}", headers=headers)
         resp.raise_for_status()

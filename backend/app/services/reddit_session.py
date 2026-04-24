@@ -3,6 +3,7 @@ Shared Reddit session — logs in with ColeFar89 credentials once, reuses cookie
 """
 import os
 import httpx
+from app.core.proxy import proxy_kwargs
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 _modhash: str | None = None
@@ -20,7 +21,7 @@ async def get_session() -> tuple[str, dict]:
     if not username or not password:
         raise RuntimeError("REDDIT_USERNAME / REDDIT_PASSWORD not set")
 
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20, **proxy_kwargs()) as client:
         # Get initial cookies
         await client.get("https://www.reddit.com/", headers={"User-Agent": UA})
 
@@ -50,7 +51,7 @@ async def get_session() -> tuple[str, dict]:
 
 async def reddit_get(url: str, params: dict = None) -> httpx.Response:
     modhash, cookies = await get_session()
-    async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=15, **proxy_kwargs()) as client:
         return await client.get(
             url,
             params=params,
@@ -61,7 +62,7 @@ async def reddit_get(url: str, params: dict = None) -> httpx.Response:
 
 async def reddit_post(url: str, data: dict) -> httpx.Response:
     modhash, cookies = await get_session()
-    async with httpx.AsyncClient(follow_redirects=True, timeout=20) as client:
+    async with httpx.AsyncClient(follow_redirects=True, timeout=20, **proxy_kwargs()) as client:
         return await client.post(
             url,
             data={**data, "uh": modhash, "api_type": "json"},

@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
 from app.services.datum_profile import DATUM_PROFILE
+from app.core.proxy import proxy_kwargs
 
 DDG_URL = "https://html.duckduckgo.com/html/"
 HEADERS = {
@@ -33,7 +34,7 @@ async def scan_web(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
     buying_signals = DATUM_PROFILE["buying_signals"]
 
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True, **proxy_kwargs()) as client:
         for query in SEARCH_QUERIES:
             try:
                 resp = await client.post(DDG_URL, data={"q": query, "kl": "us-en"})

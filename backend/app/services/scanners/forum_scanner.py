@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
 from app.services.datum_profile import DATUM_PROFILE
+from app.core.proxy import proxy_kwargs
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -46,7 +47,7 @@ def _is_relevant(text: str) -> bool:
 async def scan_forums(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
 
-    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
+    async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True, **proxy_kwargs()) as client:
         for forum_name, base_url, param_template in FORUMS:
             for term in SEARCH_TERMS:
                 try:
