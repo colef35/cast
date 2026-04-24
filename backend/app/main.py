@@ -89,6 +89,19 @@ async def debug_hn_post():
         return {"status": "error", "detail": str(e)}
 
 
+@app.get("/config")
+def config():
+    """Shows which posting channels are configured."""
+    import os
+    return {
+        "hackernews": bool(os.environ.get("HN_COOKIE")),
+        "reddit": bool(os.environ.get("REDDIT_USERNAME")),
+        "youtube": bool(os.environ.get("YOUTUBE_REFRESH_TOKEN")),
+        "proxy": bool(os.environ.get("CAST_PROXY")),
+        "ai_drafts": bool(os.environ.get("ANTHROPIC_API_KEY")),
+    }
+
+
 @app.get("/stats")
 def stats():
     from app.core.supabase import get_supabase

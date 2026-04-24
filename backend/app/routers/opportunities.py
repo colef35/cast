@@ -109,5 +109,13 @@ async def _post_opp(opp: dict) -> bool:
         await post_comment(source_url, draft)
         return True
 
-    # YouTube and forum — no posting capability yet, skip
+    if channel == "youtube":
+        import os
+        if not os.environ.get("YOUTUBE_REFRESH_TOKEN"):
+            return False
+        from app.services.youtube_poster import post_comment as yt_post
+        result = await yt_post(source_url, draft)
+        return result is not None
+
+    # Forum — no posting capability yet, skip
     return False

@@ -8,7 +8,7 @@ from app.core.proxy import proxy_kwargs
 ALGOLIA_URL = "https://hn.algolia.com/api/v1/search"
 MIN_POINTS = 2
 MIN_COMMENTS = 1
-MAX_AGE_DAYS = 30  # only grab threads from the last 30 days (comment form still visible)
+MAX_AGE_DAYS = 60  # only grab threads from the last 60 days (comment form still visible)
 
 CONSTRUCTION_SIGNALS = [
     "construction", "excavat", "grading", "earthwork", "job cost",

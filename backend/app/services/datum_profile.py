@@ -37,6 +37,10 @@ DATUM_PROFILE = {
         "construction management software", "procore alternative",
         "contractor software", "construction saas", "job costing",
         "construction productivity", "field management",
+        "construction", "contractor", "general contractor", "subcontractor",
+        "small business software field service", "operations software trades",
+        "construction company", "building contractor", "excavation",
+        "ask hn software construction", "construction workflow",
     ],
     "buying_signals": [
         "looking for", "recommend", "any suggestions", "what do you use",
