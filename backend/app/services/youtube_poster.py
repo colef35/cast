@@ -5,12 +5,14 @@ env vars (OAuth 2.0 with youtube.force-ssl scope).
 """
 import os
 import re
+import time
 import httpx
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 COMMENT_URL = "https://www.googleapis.com/youtube/v3/commentThreads"
 
 _access_token: str | None = None
+_token_expires_at: float = 0
 
 
 def _video_id(url: str) -> str:
@@ -19,8 +21,8 @@ def _video_id(url: str) -> str:
 
 
 async def _get_access_token() -> str:
-    global _access_token
-    if _access_token:
+    global _access_token, _token_expires_at
+    if _access_token and time.time() < _token_expires_at - 60:
         return _access_token
 
     client_id = os.environ.get("YOUTUBE_CLIENT_ID", "")
@@ -38,7 +40,9 @@ async def _get_access_token() -> str:
             "grant_type": "refresh_token",
         })
         resp.raise_for_status()
-        _access_token = resp.json()["access_token"]
+        data = resp.json()
+        _access_token = data["access_token"]
+        _token_expires_at = time.time() + data.get("expires_in", 3600)
 
     return _access_token
 
