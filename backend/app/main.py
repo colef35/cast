@@ -9,12 +9,59 @@ import asyncio
 import os
 
 
+AUTO_APPROVE_THRESHOLD = 0.55  # roi_score >= this → auto-approve and post
+
+
+async def _auto_post_pending(user_id: str):
+    """Auto-approve and post high-scoring pending opportunities for a user."""
+    import logging
+    log = logging.getLogger("cast.auto_post")
+    from app.core.supabase import get_supabase
+    from app.models.opportunity import OpportunityStatus
+    from app.routers.opportunities import _post_opp
+    from uuid import UUID
+
+    db = get_supabase()
+    result = (
+        db.table("opportunities")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("status", OpportunityStatus.pending)
+        .execute()
+    )
+    pending = result.data or []
+    candidates = [o for o in pending if (o.get("roi_score") or 0) >= AUTO_APPROVE_THRESHOLD]
+    log.warning(f"[auto_post] {len(candidates)}/{len(pending)} pending meet threshold for user {user_id[:8]}")
+
+    sent = 0
+    for opp in candidates:
+        await asyncio.sleep(5)
+        try:
+            posted = await _post_opp(opp)
+            if posted:
+                db.table("opportunities").update({
+                    "status": OpportunityStatus.sent,
+                    "acted_at": __import__("datetime").datetime.utcnow().isoformat(),
+                }).eq("id", opp["id"]).execute()
+                sent += 1
+                log.warning(f"[auto_post] SENT {opp['channel']} | {opp['source_url'][:70]}")
+            else:
+                db.table("opportunities").update({
+                    "status": OpportunityStatus.approved,
+                    "acted_at": __import__("datetime").datetime.utcnow().isoformat(),
+                }).eq("id", opp["id"]).execute()
+        except Exception as e:
+            log.warning(f"[auto_post] FAILED {opp.get('source_url','')[:60]}: {e}")
+    log.warning(f"[auto_post] Done — {sent} posted for user {user_id[:8]}")
+
+
 async def _auto_scan_loop():
     await asyncio.sleep(60)
     while True:
         try:
+            import logging
+            log = logging.getLogger("cast.scan")
             from app.core.supabase import get_supabase
-            from app.services.product_service import ProductService
             from app.services.opportunity_service import OpportunityService
             from app.services.scanners.hn_scanner import scan_hn
             from app.services.scanners.reddit_scanner import scan_reddit
@@ -24,6 +71,7 @@ async def _auto_scan_loop():
 
             db = get_supabase()
             products_data = db.table("product_profiles").select("*").execute().data or []
+            log.warning(f"[scan] Starting scan for {len(products_data)} product(s)")
 
             opp_service = OpportunityService()
             for p_row in products_data:
@@ -40,16 +88,24 @@ async def _auto_scan_loop():
                     scan_forums(product),
                     return_exceptions=True,
                 )
+                ingested = 0
                 for raw in raw_lists:
                     if isinstance(raw, Exception):
                         continue
                     for opp_create in raw:
                         try:
                             await opp_service.ingest(opp_create)
+                            ingested += 1
                         except Exception:
                             pass
-        except Exception:
-            pass
+                log.warning(f"[scan] Ingested {ingested} opps for product '{p_row.get('name')}'")
+
+                # Auto-approve and post high-scoring pending opps
+                await _auto_post_pending(p_row["user_id"])
+
+        except Exception as e:
+            import logging
+            logging.getLogger("cast.scan").warning(f"[scan] Loop error: {e}")
         await asyncio.sleep(2 * 3600)
 
 
@@ -151,6 +207,61 @@ def list_users(secret: str = ""):
     rows = conn.execute("SELECT DISTINCT user_id, COUNT(*) as cnt FROM opportunities GROUP BY user_id").fetchall()
     conn.close()
     return [{"user_id": r[0], "count": r[1]} for r in rows]
+
+
+@app.post("/admin/reset-password")
+def reset_password(user_id: str, new_password: str, secret: str = ""):
+    if secret != os.environ.get("CRON_SECRET", ""):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from app.core.database import get_db
+    import hashlib, hmac, secrets as sec
+    salt = sec.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", new_password.encode(), salt.encode(), 260000)
+    pw_hash = f"{salt}${dk.hex()}"
+    conn = get_db()
+    conn.execute("UPDATE users SET password_hash=? WHERE id=?", [pw_hash, user_id])
+    conn.commit()
+    conn.close()
+    return {"reset": True}
+
+
+@app.post("/admin/seed-datum")
+def seed_datum(secret: str = ""):
+    if secret != os.environ.get("CRON_SECRET", ""):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from app.core.database import get_db
+    import json as _json
+    conn = get_db()
+    existing = conn.execute("SELECT id FROM product_profiles WHERE name='DATUM+' LIMIT 1").fetchone()
+    if existing:
+        conn.close()
+        return {"status": "already_exists", "id": existing[0]}
+    import uuid as _uuid
+    product_id = str(_uuid.uuid4())
+    user_id = "61b06034-a360-4136-918a-4212c07e4a4b"
+    keywords = _json.dumps([
+        "construction management software", "procore alternative", "buildertrend alternative",
+        "job costing", "construction payroll", "contractor software", "construction scheduling",
+        "bid management", "change orders", "construction ai", "equipment diagnostics",
+        "daily logs", "excavation software", "small contractor", "construction saas",
+    ])
+    conn.execute("""INSERT INTO product_profiles
+        (id, user_id, name, tagline, description, target_audience, pain_point_solved, url, pricing_summary, keywords)
+        VALUES (?,?,?,?,?,?,?,?,?,?)""", [
+        product_id, user_id, "DATUM+",
+        "All-in-one construction management at $49/month — Procore alternative",
+        "DATUM+ is an all-in-one construction management platform built for contractors who run real work. Job costing, payroll with live tax calculations, Gantt scheduling, AI field assistant (DATUM Ai™), equipment fault diagnostics (MECH-IQ™), Bidders IQ™ for contract discovery, GPS daily logs, change orders, RFIs, submittals, photo docs. Starting at $49/month — Procore starts at $10,000/year. 7-day free trial, no credit card required.",
+        "Contractors, subcontractors, small construction companies, excavation crews, GCs running 3-20 jobs/year, construction business owners",
+        "Procore costs $10,000/year. Buildertrend is residential-only. Nothing exists for the contractor running 3-20 jobs/year who needs real tools at a real price.",
+        "https://lowlevellogic.org",
+        "$49/mo Solo, $85/mo Starter, $199/mo Pro, $399/mo Enterprise. 7-day free trial.",
+        keywords,
+    ])
+    conn.commit()
+    conn.close()
+    return {"status": "seeded", "id": product_id}
 
 
 @app.post("/admin/migrate-user")
