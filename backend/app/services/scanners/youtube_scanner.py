@@ -21,6 +21,20 @@ SEARCH_QUERIES = [
     "construction job costing software",
     "contractor management app review",
     "construction scheduling software",
+    "what software do contractors use",
+    "procore too expensive alternative",
+    "construction business software small contractor",
+    "contractor job costing app review",
+    "excavation contractor software",
+    "construction payroll software review",
+    "how to manage construction projects",
+    "construction company software",
+    "contractor business management tips",
+    "construction field management app",
+    "procore vs alternatives",
+    "buildertrend alternative contractors",
+    "running a construction business software",
+    "contractor productivity tools",
 ]
 
 

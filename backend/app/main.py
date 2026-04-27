@@ -1,19 +1,23 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from app.routers import products, opportunities, scan, billing
+from app.routers import products, opportunities, scan, billing, auth
+from app.routers.user_auth import router as user_auth_router
 from app.core.database import init_db
 import asyncio
+import os
 
 
 async def _auto_scan_loop():
-    """Runs a full scan every 6 hours automatically."""
-    await asyncio.sleep(60)  # wait 1 min after startup before first scan
+    await asyncio.sleep(60)
     while True:
         try:
             from app.core.supabase import get_supabase
             from app.services.product_service import ProductService
             from app.services.opportunity_service import OpportunityService
             from app.services.scanners.hn_scanner import scan_hn
+            from app.services.scanners.reddit_scanner import scan_reddit
             from app.services.scanners.web_scanner import scan_web
             from app.services.scanners.youtube_scanner import scan_youtube
             from app.services.scanners.forum_scanner import scan_forums
@@ -24,9 +28,13 @@ async def _auto_scan_loop():
             opp_service = OpportunityService()
             for p_row in products_data:
                 from app.models.product_profile import ProductProfile
-                product = ProductProfile(**p_row)
+                try:
+                    product = ProductProfile(**p_row)
+                except Exception:
+                    continue
                 raw_lists = await asyncio.gather(
                     scan_hn(product),
+                    scan_reddit(product),
                     scan_web(product),
                     scan_youtube(product),
                     scan_forums(product),
@@ -40,16 +48,9 @@ async def _auto_scan_loop():
                             await opp_service.ingest(opp_create)
                         except Exception:
                             pass
-            # Auto-send after each scan cycle
-            try:
-                from app.routers.opportunities import _run_send_all
-                for p_row in products_data:
-                    await _run_send_all(str(p_row["user_id"]))
-            except Exception:
-                pass
         except Exception:
             pass
-        await asyncio.sleep(2 * 3600)  # run every 2 hours
+        await asyncio.sleep(2 * 3600)
 
 
 @asynccontextmanager
@@ -61,10 +62,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="CAST API", version="0.1.0", lifespan=lifespan)
 
+app.include_router(user_auth_router)
 app.include_router(products.router)
 app.include_router(opportunities.router)
 app.include_router(scan.router)
 app.include_router(billing.router)
+app.include_router(auth.router)
+
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
+
+@app.get("/")
+def dashboard():
+    index = os.path.join(_static_dir, "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
+    return {"name": "CAST API", "docs": "/docs"}
 
 
 @app.get("/health")
@@ -72,55 +87,31 @@ def health():
     return {"status": "ok"}
 
 
-@app.get("/debug/hn-post")
-async def debug_hn_post():
-    """Test posting a comment to the HN front page newest thread."""
-    import httpx
-    from bs4 import BeautifulSoup
-    from app.services.hn_poster import post_comment, _cookie
-    try:
-        # Find a recent thread to test with
-        async with httpx.AsyncClient(timeout=10) as client:
-            r = await client.get("https://hacker-news.firebaseio.com/v0/newstories.json")
-            ids = r.json()[:5]
-        # Use first story ID
-        thread_url = f"https://news.ycombinator.com/item?id={ids[0]}"
-        url = await post_comment(
-            thread_url,
-            "Test — ignore. Construction management software for contractors: https://lowlevellogic.org"
-        )
-        if url is None:
-            return {"status": "skipped", "reason": "Thread has no comment form (too old or closed)", "thread": thread_url}
-        return {"status": "ok", "url": url}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
-
 @app.get("/config")
 def config():
-    """Shows which posting channels are configured."""
-    import os
     return {
         "hackernews": bool(os.environ.get("HN_COOKIE")),
         "reddit": bool(os.environ.get("REDDIT_USERNAME")),
         "youtube": bool(os.environ.get("YOUTUBE_REFRESH_TOKEN")),
-        "proxy": bool(os.environ.get("CAST_PROXY")),
         "ai_drafts": bool(os.environ.get("ANTHROPIC_API_KEY")),
     }
 
 
 @app.get("/stats")
-def stats():
+def stats(user_id: str = None):
     from app.core.supabase import get_supabase
     from datetime import datetime, timedelta
     db = get_supabase()
 
-    opps = db.table("opportunities").select("channel, status, created_at").execute().data or []
+    q = db.table("opportunities").select("channel, status, created_at")
+    if user_id:
+        q = q.eq("user_id", user_id)
+    opps = q.execute().data or []
+
     subs = db.table("subscriptions").select("plan, active, created_at").execute().data or []
 
     now = datetime.utcnow()
     last_24h = [o for o in opps if o.get("created_at", "") >= (now - timedelta(hours=24)).isoformat()]
-    last_7d  = [o for o in opps if o.get("created_at", "") >= (now - timedelta(days=7)).isoformat()]
 
     by_channel = {}
     for o in opps:
@@ -137,10 +128,11 @@ def stats():
         "opportunities": {
             "total": len(opps),
             "last_24h": len(last_24h),
-            "last_7d": len(last_7d),
             "by_channel": by_channel,
             "pending": sum(1 for o in opps if o.get("status") == "pending"),
+            "approved": sum(1 for o in opps if o.get("status") == "approved"),
             "sent": sum(1 for o in opps if o.get("status") == "sent"),
+            "rejected": sum(1 for o in opps if o.get("status") == "rejected"),
         },
         "subscribers": {
             "total_active": len(active_subs),

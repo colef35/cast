@@ -42,6 +42,14 @@ class OpportunityService:
         )
         return [Opportunity(**r) for r in result.data]
 
+    async def list_by_status(self, user_id: UUID, status: str = None) -> list[Opportunity]:
+        q = self.db.table(TABLE).select("*").eq("user_id", str(user_id))
+        if status:
+            q = q.eq("status", status)
+        q = q.order("created_at", desc=True)
+        result = q.execute()
+        return [Opportunity(**r) for r in result.data]
+
     async def set_status(self, opp_id: UUID, user_id: UUID, status: OpportunityStatus) -> Opportunity | None:
         from datetime import datetime
         updates = {"status": status}

@@ -90,9 +90,9 @@ Most relevant feature to highlight: {feature}
 Score this opportunity and write a reply.
 
 Rules for the reply:
-- Sound like a real person, not marketing
+- Sound like a real person, not marketing copy
 - Be genuinely helpful even if they don't click
-- Only mention the product if it truly fits — if it doesn't fit well, say so honestly
+- ALWAYS mention {product.name} and include the URL ({product.url}) naturally — you're the founder, own it
 - Match the tone of the channel ({opp.channel})
 - Keep it under 3 sentences for reddit/twitter, up to 5 for linkedin/hackernews
 

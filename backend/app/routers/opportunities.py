@@ -18,6 +18,11 @@ async def list_pending(user_id: UUID):
     return await service.list_pending(user_id)
 
 
+@router.get("/all", response_model=list[Opportunity])
+async def list_all(user_id: UUID, status: str = None):
+    return await service.list_by_status(user_id, status)
+
+
 @router.patch("/{opp_id}/approve", response_model=Opportunity)
 async def approve(opp_id: UUID, user_id: UUID):
     opp = await service.set_status(opp_id, user_id, OpportunityStatus.approved)
@@ -42,43 +47,33 @@ async def send(opp_id: UUID, user_id: UUID):
     if not result.data:
         raise HTTPException(status_code=404, detail="Opportunity not found")
 
-    opp = result.data
-    await _post_opp(opp)
+    await _post_opp(result.data)
     return await service.set_status(opp_id, user_id, OpportunityStatus.sent)
 
 
-@router.post("/send-all", response_model=dict)
-async def send_all(user_id: UUID):
-    """Fire-and-forget: kicks off background sending, returns immediately."""
-    asyncio.create_task(_run_send_all(str(user_id)))
-    return {"status": "started", "message": "Sending in background — check /stats for progress"}
+@router.post("/send-approved", response_model=dict)
+async def send_approved(user_id: UUID):
+    """Send all approved opportunities in the background."""
+    asyncio.create_task(_run_send_approved(str(user_id)))
+    return {"status": "started"}
 
 
-async def _run_send_all(user_id: str):
+async def _run_send_approved(user_id: str):
     import logging
-    log = logging.getLogger("send_all")
+    log = logging.getLogger("send_approved")
     from app.core.supabase import get_supabase
     db = get_supabase()
     result = (
         db.table("opportunities")
         .select("*")
         .eq("user_id", user_id)
-        .eq("status", "pending")
+        .eq("status", OpportunityStatus.approved)
         .execute()
     )
-
-    import os
     opps = result.data or []
-    yt_enabled = bool(os.environ.get("YOUTUBE_REFRESH_TOKEN"))
-    # Filter to channels we can actually post to
-    postable = [o for o in opps if
-        o.get("draft") and o.get("source_url") and
-        (o.get("channel") == "hackernews" or
-         (o.get("channel") == "youtube" and yt_enabled))
-    ]
-    log.warning(f"[send_all] Starting — {len(postable)} postable (of {len(opps)} total)")
+    log.warning(f"[send_approved] {len(opps)} approved opportunities to post")
     sent = 0
-    for opp in postable:
+    for opp in opps:
         await asyncio.sleep(4)
         try:
             posted = await _post_opp(opp)
@@ -86,15 +81,12 @@ async def _run_send_all(user_id: str):
                 from uuid import UUID
                 await service.set_status(UUID(opp["id"]), UUID(user_id), OpportunityStatus.sent)
                 sent += 1
-                log.warning(f"[send_all] Sent {sent}: {opp['source_url'][:60]}")
-            else:
-                log.warning(f"[send_all] Skipped (no poster): channel={opp.get('channel')} url={opp['source_url'][:60]}")
         except Exception as e:
-            log.warning(f"[send_all] FAILED {opp['source_url'][:60]}: {e}")
+            log.warning(f"[send_approved] FAILED {opp['source_url'][:60]}: {e}")
+    log.warning(f"[send_approved] Done — posted {sent}/{len(opps)}")
 
 
 async def _post_opp(opp: dict) -> bool:
-    """Post to the appropriate platform based on channel. Returns True if posted."""
     channel = opp.get("channel", "")
     draft = opp.get("draft", "")
     source_url = opp.get("source_url", "")
@@ -105,12 +97,9 @@ async def _post_opp(opp: dict) -> bool:
     if channel == "hackernews":
         from app.services.hn_poster import post_comment
         result = await post_comment(source_url, draft)
-        return result is not None  # None means thread too old, skip
+        return result is not None
 
     if channel == "reddit":
-        import os
-        if not os.environ.get("REDDIT_USERNAME"):
-            return False
         from app.services.reddit_poster import post_comment
         await post_comment(source_url, draft)
         return True
@@ -123,5 +112,12 @@ async def _post_opp(opp: dict) -> bool:
         result = await yt_post(source_url, draft)
         return result is not None
 
-    # Forum — no posting capability yet, skip
+    if channel == "forum":
+        import os
+        if not os.environ.get("CT_USERNAME"):
+            return False
+        from app.services.forum_poster import post_reply
+        result = await post_reply(source_url, draft)
+        return result is not None
+
     return False
