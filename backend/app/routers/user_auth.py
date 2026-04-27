@@ -1,17 +1,18 @@
 import os
 import uuid
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
-from passlib.context import CryptContext
+from pydantic import BaseModel
 import jwt
 
 from app.core.supabase import get_supabase
 
 router = APIRouter(prefix="/user", tags=["auth"])
 
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _SECRET = os.environ.get("JWT_SECRET", "cast-dev-secret-change-in-prod")
 _ALGO = "HS256"
 _bearer = HTTPBearer(auto_error=False)
@@ -27,8 +28,19 @@ class LoginRequest(BaseModel):
     password: str
 
 
-def _truncate(password: str) -> str:
-    return password.encode()[:72].decode(errors="ignore")
+def _hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260000)
+    return f"{salt}${dk.hex()}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, dk_hex = stored.split("$", 1)
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260000)
+        return hmac.compare_digest(dk.hex(), dk_hex)
+    except Exception:
+        return False
 
 
 def _make_token(user_id: str, email: str) -> str:
@@ -64,7 +76,7 @@ def register(req: RegisterRequest):
     db.table("users").insert({
         "id": user_id,
         "email": req.email,
-        "password_hash": _pwd.hash(_truncate(req.password)),
+        "password_hash": _hash_password(req.password),
         "plan": "trial",
     }).execute()
 
@@ -80,7 +92,7 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     user = result.data[0]
-    if not _pwd.verify(_truncate(req.password), user["password_hash"]):
+    if not _verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = _make_token(user["id"], user["email"])
