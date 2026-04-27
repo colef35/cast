@@ -27,6 +27,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+def _truncate(password: str) -> str:
+    return password.encode()[:72].decode(errors="ignore")
+
+
 def _make_token(user_id: str, email: str) -> str:
     payload = {
         "sub": user_id,
@@ -60,7 +64,7 @@ def register(req: RegisterRequest):
     db.table("users").insert({
         "id": user_id,
         "email": req.email,
-        "password_hash": _pwd.hash(req.password),
+        "password_hash": _pwd.hash(_truncate(req.password)),
         "plan": "trial",
     }).execute()
 
@@ -76,7 +80,7 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     user = result.data[0]
-    if not _pwd.verify(req.password, user["password_hash"]):
+    if not _pwd.verify(_truncate(req.password), user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     token = _make_token(user["id"], user["email"])
