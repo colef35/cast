@@ -141,6 +141,18 @@ def stats(user_id: str = None):
     }
 
 
+@app.get("/admin/users")
+def list_users(secret: str = ""):
+    if secret != os.environ.get("CRON_SECRET", ""):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from app.core.database import get_db
+    conn = get_db()
+    rows = conn.execute("SELECT DISTINCT user_id, COUNT(*) as cnt FROM opportunities GROUP BY user_id").fetchall()
+    conn.close()
+    return [{"user_id": r[0], "count": r[1]} for r in rows]
+
+
 @app.post("/admin/migrate-user")
 def migrate_user(from_id: str, to_id: str, secret: str = ""):
     if secret != os.environ.get("CRON_SECRET", ""):
