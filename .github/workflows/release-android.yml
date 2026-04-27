@@ -34,22 +34,16 @@ jobs:
           restore-keys: gradle-
 
       - name: Decode keystore
-        run: |
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
+        run: echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
 
       - name: Build release AAB
         working-directory: android
-        env:
-          KEYSTORE_PATH: /tmp/release.jks
-          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
         run: |
           ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file=$KEYSTORE_PATH \
-            -Pandroid.injected.signing.store.password=$STORE_PASSWORD \
-            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
-            -Pandroid.injected.signing.key.password=$KEY_PASSWORD \
+            -Pandroid.injected.signing.store.file=/tmp/release.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.RELEASE_STORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.RELEASE_KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.RELEASE_KEY_PASSWORD }} \
             --no-daemon
 
       - name: Upload AAB artifact
@@ -61,10 +55,9 @@ jobs:
 
       - name: Publish to Play Store
         uses: r0adkll/upload-google-play@v1
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.lowlevellogic.cast
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          track: ${{ inputs.track }}
+          track: ${{ github.event.inputs.track }}
           status: completed
