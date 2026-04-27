@@ -14,7 +14,29 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            val ksPath = System.getProperty("android.injected.signing.store.file")
+                ?: (rootProject.file("../cast-release.jks").takeIf { it.exists() }?.absolutePath)
+            if (ksPath != null) {
+                storeFile = file(ksPath)
+                storePassword = System.getProperty("android.injected.signing.store.password") ?: "cast2025!"
+                keyAlias = System.getProperty("android.injected.signing.key.alias") ?: "cast-release"
+                keyPassword = System.getProperty("android.injected.signing.key.password") ?: "cast2025!"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {
