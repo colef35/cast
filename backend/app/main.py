@@ -139,3 +139,15 @@ def stats(user_id: str = None):
             "by_plan": by_plan,
         },
     }
+
+
+@app.post("/admin/migrate-user")
+def migrate_user(from_id: str, to_id: str, secret: str = ""):
+    if secret != os.environ.get("CRON_SECRET", ""):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    from app.core.supabase import get_supabase
+    db = get_supabase()
+    opps = db.table("opportunities").update({"user_id": to_id}).eq("user_id", from_id).execute()
+    prods = db.table("product_profiles").update({"user_id": to_id}).eq("user_id", from_id).execute()
+    return {"opportunities_migrated": len(opps.data or []), "products_migrated": len(prods.data or [])}
