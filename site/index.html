@@ -85,7 +85,7 @@
   <div class="video-shell">
     <video id="demo" autoplay muted loop playsinline controls preload="auto"></video>
   </div>
-  <p class="video-cap">A plumber in his shop, a homeowner whose water heater just died, and CAST in the middle — signal, draft, approve, posted.</p>
+  <p class="video-cap">CAST's live engine, running its DATUM+ profile tonight: four posts go in, one signal comes out. Every score and the draft are the engine's real output — captured from the code, not acted.</p>
   <div class="cta-row" style="margin-top:28px">
     <a class="btn" href="#pricing">Start listening — it's free</a>
     <a class="btn ghost" href="#run">See a run, step by step</a>
@@ -95,7 +95,7 @@
 <section id="run">
   <div class="wrap">
     <h2>One run, start to finish</h2>
-    <p class="sub">No mockups of features that don't exist — this is the exact flow from the video, with the actual artifacts CAST produces at each step.</p>
+    <p class="sub">The video above is the engine room. Here's the same flow the way an owner lives it — with the actual artifacts CAST produces at each step.</p>
     <div class="grid">
       <div class="card">
         <span class="step-num">STEP 1 · THE SIGNAL</span>
@@ -252,7 +252,7 @@
 <script>
 (function(){
   var v = document.getElementById('demo');
-  var parts = ['assets/cast-demo.b64.00','assets/cast-demo.b64.01','assets/cast-demo.b64.02','assets/cast-demo.b64.03','assets/cast-demo.b64.04','assets/cast-demo.b64.05','assets/cast-demo.b64.06'];
+  var parts = ['assets/cast-realdemo.b64.00','assets/cast-realdemo.b64.01','assets/cast-realdemo.b64.02'];
   Promise.all(parts.map(function(p){ return fetch(p).then(function(r){ return r.text(); }); }))
   .then(function(chunks){ return chunks.join(''); }).then(function(b64){
     var bin = atob(b64.replace(/\s+/g,'')), len = bin.length, bytes = new Uint8Array(len);
