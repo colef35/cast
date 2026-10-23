@@ -1,12 +1,18 @@
 """
 Web scanner — searches DuckDuckGo for buying-signal posts across the internet.
-No API key required.
+No API key required. Queries and buying signals come from the product
+profile (SPEC §4.1).
 """
 import httpx
 from bs4 import BeautifulSoup
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import (
+    derive_search_queries,
+    get_buying_signals,
+    get_search_queries,
+    is_blocked,
+)
 from app.core.proxy import proxy_kwargs
 
 DDG_URL = "https://html.duckduckgo.com/html/"
@@ -15,27 +21,14 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-SEARCH_QUERIES = [
-    "alternative to procore construction software",
-    "construction management software too expensive",
-    "best construction job costing software small contractor",
-    "procore alternative affordable",
-    "contractor software recommendation site:reddit.com OR site:contractortalk.com OR site:forum",
-    "construction payroll software recommendation",
-    "bid management software for contractors",
-    "construction scheduling software small business",
-    "what construction software do you use",
-    "DATUM+ construction software review",
-    "lowlevellogic.org construction",
-]
-
 
 async def scan_web(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
-    buying_signals = DATUM_PROFILE["buying_signals"]
+    buying_signals = [s.lower() for s in get_buying_signals(product)]
+    queries = get_search_queries(product, "web") or derive_search_queries(product)
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True, **proxy_kwargs()) as client:
-        for query in SEARCH_QUERIES:
+        for query in queries:
             try:
                 resp = await client.post(DDG_URL, data={"q": query, "kl": "us-en"})
                 if resp.status_code != 200:
@@ -52,6 +45,8 @@ async def scan_web(product: ProductProfile) -> list[OpportunityCreate]:
                     snippet = snippet_el.get_text(strip=True) if snippet_el else ""
 
                     if not url or not title:
+                        continue
+                    if is_blocked(product, url):
                         continue
 
                     # Normalize URL

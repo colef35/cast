@@ -1,41 +1,23 @@
 """
-YouTube scanner — finds construction software videos and surfaces them as
-reply opportunities. Uses YouTube's public search page (no API key).
+YouTube scanner — finds videos about the product's world and surfaces them
+as reply opportunities. Uses YouTube's public search page (no API key).
+Queries and buying signals come from the product profile (SPEC §4.1).
 """
 import httpx
 import json
 import re
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import (
+    derive_search_queries,
+    get_buying_signals,
+    get_search_queries,
+)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; cast-bot/0.1)",
     "Accept-Language": "en-US,en;q=0.9",
 }
-
-SEARCH_QUERIES = [
-    "construction management software review",
-    "procore alternative 2024",
-    "best construction software for small contractors",
-    "construction job costing software",
-    "contractor management app review",
-    "construction scheduling software",
-    "what software do contractors use",
-    "procore too expensive alternative",
-    "construction business software small contractor",
-    "contractor job costing app review",
-    "excavation contractor software",
-    "construction payroll software review",
-    "how to manage construction projects",
-    "construction company software",
-    "contractor business management tips",
-    "construction field management app",
-    "procore vs alternatives",
-    "buildertrend alternative contractors",
-    "running a construction business software",
-    "contractor productivity tools",
-]
 
 
 def _extract_videos(html: str) -> list[dict]:
@@ -76,10 +58,11 @@ def _extract_videos(html: str) -> list[dict]:
 
 async def scan_youtube(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
-    buying_signals = DATUM_PROFILE["buying_signals"]
+    buying_signals = [s.lower() for s in get_buying_signals(product)]
+    queries = get_search_queries(product, "youtube") or derive_search_queries(product)
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True) as client:
-        for query in SEARCH_QUERIES:
+        for query in queries:
             try:
                 resp = await client.get(
                     "https://www.youtube.com/results",
