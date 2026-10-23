@@ -1,42 +1,30 @@
 #!/usr/bin/env python3
-"""Seed DATUM+ as a product profile for CAST."""
-import os, sys, requests
+"""Seed DATUM+ as product profile #1 for CAST.
+
+The seed content lives in ONE place — backend/app/services/datum_profile.py
+(DATUM_PLUS_SEED) — because DATUM+ is a customer of the platform, not part of
+the codebase (SPEC §4.1). This script just posts that payload to the API.
+To seed a different product, point CAST_SEED_SLUG at another entry in
+SEED_PROFILES or create the profile through the /products API (PROFILES.md).
+"""
+import copy, os, sys, requests
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+from app.services.datum_profile import SEED_PROFILES
 
 BASE = os.environ.get("CAST_API_URL", "http://localhost:8000")
 USER_ID = os.environ.get("CAST_USER_ID")
+SLUG = os.environ.get("CAST_SEED_SLUG", "datum+").strip().lower()
 
 if not USER_ID:
     print("Set CAST_USER_ID env var (your Supabase user UUID).")
     sys.exit(1)
 
-payload = {
-    "name": "DATUM+",
-    "tagline": "All-in-one construction management at $49/month — Procore alternative",
-    "description": (
-        "DATUM+ is an all-in-one construction management platform built for contractors "
-        "who run real work. Job costing, payroll with live tax calculations, Gantt scheduling, "
-        "AI field assistant (DATUM Ai™), equipment fault diagnostics (MECH-IQ™), Bidders IQ™ "
-        "for contract discovery, GPS daily logs, change orders, RFIs, submittals, photo docs, "
-        "and IDP™ document processing. Starting at $49/month — Procore starts at $10,000/year. "
-        "7-day free trial, no credit card required."
-    ),
-    "target_audience": (
-        "Contractors, subcontractors, small construction companies, excavation crews, "
-        "GCs running 3–20 jobs/year, construction business owners"
-    ),
-    "pain_point_solved": (
-        "Procore costs $10,000/year. Buildertrend is residential-only. "
-        "Nothing exists for the contractor running 3–20 jobs/year who needs real tools at a real price."
-    ),
-    "url": "https://lowlevellogic.org",
-    "pricing_summary": "$49/mo Solo, $85/mo Starter, $199/mo Pro, $399/mo Enterprise. 7-day free trial.",
-    "keywords": [
-        "construction management software", "procore alternative", "buildertrend alternative",
-        "job costing", "construction payroll", "contractor software", "construction scheduling",
-        "bid management", "change orders", "construction ai", "equipment diagnostics",
-        "daily logs", "excavation software", "small contractor", "construction saas",
-    ],
-}
+if SLUG not in SEED_PROFILES:
+    print(f"Unknown CAST_SEED_SLUG '{SLUG}'. Known: {sorted(SEED_PROFILES)}")
+    sys.exit(1)
+
+payload = copy.deepcopy(SEED_PROFILES[SLUG])
 
 resp = requests.post(f"{BASE}/products/", json=payload, params={"user_id": USER_ID})
 resp.raise_for_status()

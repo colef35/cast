@@ -2,7 +2,12 @@ import httpx
 import time
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import (
+    derive_search_queries,
+    get_reject_signals,
+    get_relevance_signals,
+    get_search_queries,
+)
 from app.core.proxy import proxy_kwargs
 
 ALGOLIA_URL = "https://hn.algolia.com/api/v1/search"
@@ -10,37 +15,27 @@ MIN_POINTS = 2
 MIN_COMMENTS = 1
 MAX_AGE_DAYS = 7  # only grab threads from the last 7 days (comment form visible on fresh threads)
 
-CONSTRUCTION_SIGNALS = [
-    "construction", "excavat", "grading", "earthwork", "job cost",
-    "procore", "buildertrend", "subcontract", "general contractor", "site work",
-    "heavy equipment", "paving", "concrete", "framing", "field management",
-    "punch list", "change order", "rfi", "submittal", "construction management",
-    "construction software", "construction app", "construction scheduling",
-    "construction payroll", "construction saas", "contractor software",
-]
 
-REJECT_SIGNALS = [
-    "software contractor", "software engineer", "software developer",
-    "programmer", "bootcamp", "tech recruiter", "immigration", "health insurance",
-    "parallel construction", "intelligence agency", "law enforcement",
-    "cryptocurrency", "blockchain",
-]
-
-
-def _is_relevant(title: str, body: str) -> bool:
+def _is_relevant(title: str, body: str, signals: list[str], reject_signals: list[str]) -> bool:
     text = (title + " " + body).lower()
-    if any(r in text for r in REJECT_SIGNALS):
+    if any(r in text for r in reject_signals):
         return False
-    return any(s in text for s in CONSTRUCTION_SIGNALS)
+    return any(s in text for s in signals)
 
 
 async def scan_hn(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
 
+    # Queries, relevance vocabulary and reject list all come from the
+    # profile (SPEC §4.1); generic fallbacks derive from its keywords.
+    queries = get_search_queries(product, "hackernews") or derive_search_queries(product)
+    signals = get_relevance_signals(product, "hackernews")
+    reject_signals = [r.lower() for r in get_reject_signals(product)]
+
     cutoff = int(time.time()) - MAX_AGE_DAYS * 86400
 
     async with httpx.AsyncClient(**proxy_kwargs()) as client:
-        for query in DATUM_PROFILE["hn_queries"]:
+        for query in queries:
             for tag in ["story", "ask_hn"]:
                 try:
                     resp = await client.get(ALGOLIA_URL, params={
@@ -53,7 +48,7 @@ async def scan_hn(product: ProductProfile) -> list[OpportunityCreate]:
                     for hit in resp.json().get("hits", []):
                         title = hit.get("title", "")
                         body = (hit.get("story_text") or hit.get("url") or "")[:2000]
-                        if not _is_relevant(title, body):
+                        if not _is_relevant(title, body, signals, reject_signals):
                             continue
                         oid = hit.get("objectID")
                         opportunities.append(OpportunityCreate(

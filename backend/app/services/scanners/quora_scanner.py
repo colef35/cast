@@ -1,12 +1,18 @@
 """
-Quora scanner — uses DuckDuckGo site:quora.com to surface construction software
-questions. Quora blocks direct scraping so we go through DDG.
+Quora scanner — uses DuckDuckGo site:quora.com to surface questions in the
+product's world. Quora blocks direct scraping so we go through DDG.
+Queries and relevance vocabulary come from the product profile (SPEC §4.1).
 """
 import httpx
 from bs4 import BeautifulSoup
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import (
+    derive_search_queries,
+    get_relevance_signals,
+    get_search_queries,
+    is_blocked,
+)
 from app.core.proxy import proxy_kwargs
 
 DDG_URL = "https://html.duckduckgo.com/html/"
@@ -15,34 +21,21 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-QUERIES = [
-    "site:quora.com procore alternative construction",
-    "site:quora.com best construction management software small contractor",
-    "site:quora.com construction job costing software",
-    "site:quora.com construction scheduling software recommendation",
-    "site:quora.com contractor software recommendation",
-    "site:quora.com buildertrend alternative",
-    "site:quora.com construction payroll software",
-    "site:quora.com construction app contractor",
-]
 
-BUYING_SIGNALS = DATUM_PROFILE["buying_signals"]
-CONSTRUCTION_SIGNALS = [
-    "construction", "contractor", "procore", "buildertrend", "job cost",
-    "payroll", "scheduling", "bid", "excavat", "subcontract",
-]
-
-
-def _is_relevant(text: str) -> bool:
+def _is_relevant(text: str, signals: list[str]) -> bool:
     t = text.lower()
-    return any(s in t for s in CONSTRUCTION_SIGNALS)
+    return any(s in t for s in signals)
 
 
 async def scan_quora(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
+    queries = get_search_queries(product, "quora")
+    if not queries:
+        queries = [f"site:quora.com {q}" for q in derive_search_queries(product)]
+    signals = get_relevance_signals(product, "quora")
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True, **proxy_kwargs()) as client:
-        for query in QUERIES:
+        for query in queries:
             try:
                 resp = await client.post(DDG_URL, data={"q": query, "kl": "us-en"})
                 if resp.status_code != 200:
@@ -60,7 +53,9 @@ async def scan_quora(product: ProductProfile) -> list[OpportunityCreate]:
 
                     if "quora.com" not in url:
                         continue
-                    if not title or not _is_relevant(title + " " + snippet):
+                    if not title or not _is_relevant(title + " " + snippet, signals):
+                        continue
+                    if is_blocked(product, url):
                         continue
                     if not url.startswith("http"):
                         url = "https://" + url

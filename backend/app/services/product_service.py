@@ -19,6 +19,17 @@ class ProductService:
         result = self.db.table(TABLE).select("*").eq("user_id", str(user_id)).execute()
         return [ProductProfile(**r) for r in result.data]
 
+    async def list_for_workspace(self, workspace_id: UUID) -> list[ProductProfile]:
+        result = self.db.table(TABLE).select("*").eq("workspace_id", str(workspace_id)).execute()
+        return [ProductProfile(**r) for r in result.data]
+
+    async def get_active_profile(self, user_id: UUID) -> ProductProfile | None:
+        """The user's active profile: most recently updated one wins."""
+        profiles = await self.list_for_user(user_id)
+        if not profiles:
+            return None
+        return max(profiles, key=lambda p: p.updated_at)
+
     async def get(self, product_id: UUID, user_id: UUID) -> ProductProfile | None:
         result = (
             self.db.table(TABLE)

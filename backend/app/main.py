@@ -228,10 +228,13 @@ def reset_password(user_id: str, new_password: str, secret: str = ""):
 
 @app.post("/admin/seed-datum")
 def seed_datum(secret: str = ""):
+    """Seed profile #1 (DATUM+) from the canonical seed data in
+    app.services.datum_profile — DATUM+ is a profile, not code (SPEC §4.1)."""
     if secret != os.environ.get("CRON_SECRET", ""):
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="Unauthorized")
     from app.core.database import get_db
+    from app.services.datum_profile import build_datum_seed_payload
     import json as _json
     conn = get_db()
     existing = conn.execute("SELECT id FROM product_profiles WHERE name='DATUM+' LIMIT 1").fetchone()
@@ -241,24 +244,13 @@ def seed_datum(secret: str = ""):
     import uuid as _uuid
     product_id = str(_uuid.uuid4())
     user_id = "61b06034-a360-4136-918a-4212c07e4a4b"
-    keywords = _json.dumps([
-        "construction management software", "procore alternative", "buildertrend alternative",
-        "job costing", "construction payroll", "contractor software", "construction scheduling",
-        "bid management", "change orders", "construction ai", "equipment diagnostics",
-        "daily logs", "excavation software", "small contractor", "construction saas",
-    ])
-    conn.execute("""INSERT INTO product_profiles
-        (id, user_id, name, tagline, description, target_audience, pain_point_solved, url, pricing_summary, keywords)
-        VALUES (?,?,?,?,?,?,?,?,?,?)""", [
-        product_id, user_id, "DATUM+",
-        "All-in-one construction management at $49/month — Procore alternative",
-        "DATUM+ is an all-in-one construction management platform built for contractors who run real work. Job costing, payroll with live tax calculations, Gantt scheduling, AI field assistant (DATUM Ai™), equipment fault diagnostics (MECH-IQ™), Bidders IQ™ for contract discovery, GPS daily logs, change orders, RFIs, submittals, photo docs. Starting at $49/month — Procore starts at $10,000/year. 7-day free trial, no credit card required.",
-        "Contractors, subcontractors, small construction companies, excavation crews, GCs running 3-20 jobs/year, construction business owners",
-        "Procore costs $10,000/year. Buildertrend is residential-only. Nothing exists for the contractor running 3-20 jobs/year who needs real tools at a real price.",
-        "https://lowlevellogic.org",
-        "$49/mo Solo, $85/mo Starter, $199/mo Pro, $399/mo Enterprise. 7-day free trial.",
-        keywords,
-    ])
+    payload = build_datum_seed_payload()
+    row = {"id": product_id, "user_id": user_id}
+    for key, value in payload.items():
+        row[key] = _json.dumps(value) if isinstance(value, (list, dict)) else value
+    cols = ", ".join(row.keys())
+    placeholders = ", ".join("?" for _ in row)
+    conn.execute(f"INSERT INTO product_profiles ({cols}) VALUES ({placeholders})", list(row.values()))
     conn.commit()
     conn.close()
     return {"status": "seeded", "id": product_id}

@@ -1,10 +1,11 @@
+import os
 import httpx
 import xml.etree.ElementTree as ET
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import get_buying_signals, get_communities
 
-UA = "DATUM+CAST/0.1 by u/ColeFar89 (construction software monitoring)"
+UA = os.environ.get("CAST_USER_AGENT", "CAST/0.1 by Low Level Logic (marketing listener)")
 MAX_POSTS = 5
 
 
@@ -69,9 +70,13 @@ async def _search_json(client: httpx.AsyncClient, subreddit: str, keyword: str, 
 
 
 async def scan_reddit(product: ProductProfile) -> list[OpportunityCreate]:
-    subreddits = DATUM_PROFILE["subreddits"]
-    keywords = product.keywords[:4] if product.keywords else DATUM_PROFILE["keywords"][:4]
-    buying_signals = set(DATUM_PROFILE.get("buying_signals", []))
+    # All product specifics come from the profile (SPEC §4.1): target
+    # subreddits, keywords, buying signals. No communities configured →
+    # keyword search across all of Reddit instead of an RSS sweep.
+    subreddits = get_communities(product, "reddit")
+    keywords = product.keywords[:4] if product.keywords else product.problem_phrases[:4]
+    keywords = [kw.lower() for kw in keywords]
+    buying_signals = {s.lower() for s in get_buying_signals(product)}
 
     opportunities = []
     seen: set = set()
@@ -93,8 +98,10 @@ async def scan_reddit(product: ProductProfile) -> list[OpportunityCreate]:
                         source_body=p["body"],
                     ))
 
-        # Secondary: search API per keyword (best-effort, may be blocked)
-        for subreddit in subreddits[:6]:
+        # Secondary: search API per keyword (best-effort, may be blocked).
+        # With no configured subreddits, search r/all by keyword.
+        search_targets = subreddits[:6] if subreddits else ["all"]
+        for subreddit in search_targets:
             for keyword in keywords[:2]:
                 posts = await _search_json(client, subreddit, keyword, seen)
                 for p in posts:

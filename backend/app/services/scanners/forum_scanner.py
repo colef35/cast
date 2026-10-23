@@ -1,12 +1,19 @@
 """
-Forum scanner — browses construction contractor forums by section.
-ContractorTalk search is blocked; we browse relevant subforums directly instead.
+Forum scanner — browses a product's target forum sections directly.
+Forum search is usually blocked; browsing relevant sections beats it.
+Sections, buying signals and relevance vocabulary come from the product
+profile (SPEC §4.1) — a profile with no forum communities scans nothing.
 """
 import httpx
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 from app.models.opportunity import Channel, OpportunityCreate
 from app.models.product_profile import ProductProfile
-from app.services.datum_profile import DATUM_PROFILE
+from app.services.profile_intel import (
+    get_buying_signals,
+    get_communities,
+    get_relevance_signals,
+)
 from app.core.proxy import proxy_kwargs
 
 HEADERS = {
@@ -14,39 +21,31 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# Browse these sections directly — highest signal-to-noise for DATUM+
-CONTRACTORTALK_SECTIONS = [
-    "https://www.contractortalk.com/forums/accounting-software-discussion.108/",
-    "https://www.contractortalk.com/forums/business.16/",
-    "https://www.contractortalk.com/forums/construction.4/",
-    "https://www.contractortalk.com/forums/commercial-construction.84/",
-    "https://www.contractortalk.com/forums/excavation.71/",
-    "https://www.contractortalk.com/forums/general-discussion.2/",
-]
 
-BUYING_SIGNALS = DATUM_PROFILE["buying_signals"]
-CONSTRUCTION_REQUIRED = [
-    "construction", "contractor", "excavat", "grading", "job cost", "procore",
-    "buildertrend", "subcontract", "site work", "paving", "concrete", "estimat",
-    "bid", "change order", "payroll", "scheduling", "field management",
-    "software", "app", "tool", "manage", "track", "recommend",
-]
-
-
-def _is_relevant(text: str) -> bool:
+def _is_relevant(text: str, required: list[str], buying_signals: list[str]) -> bool:
     t = text.lower()
-    return any(s in t for s in CONSTRUCTION_REQUIRED) and any(s in t for s in BUYING_SIGNALS)
+    return any(s in t for s in required) and any(s in t for s in buying_signals)
 
 
 async def scan_forums(product: ProductProfile) -> list[OpportunityCreate]:
     opportunities = []
+    sections = get_communities(product, "forum")
+    if not sections:
+        return opportunities
+
+    buying_signals = [s.lower() for s in get_buying_signals(product)]
+    required = get_relevance_signals(product, "forum")
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15, follow_redirects=True, **proxy_kwargs()) as client:
-        for section_url in CONTRACTORTALK_SECTIONS:
+        for section_url in sections:
             try:
                 resp = await client.get(section_url)
                 if resp.status_code != 200:
                     continue
+
+                host = urlparse(section_url)
+                base = f"{host.scheme}://{host.netloc}"
+                forum_name = host.netloc.replace("www.", "")
 
                 soup = BeautifulSoup(resp.text, "html.parser")
                 # XenForo 2 thread links use /threads/ path
@@ -57,17 +56,17 @@ async def scan_forums(product: ProductProfile) -> list[OpportunityCreate]:
                     text = a.get_text(strip=True)
                     if len(text) < 10:
                         continue
-                    if not _is_relevant(text):
+                    if not _is_relevant(text, required, buying_signals):
                         continue
                     if not href.startswith("http"):
-                        href = "https://www.contractortalk.com" + href
+                        href = base + href
                     opportunities.append(OpportunityCreate(
                         product_id=product.id,
                         user_id=product.user_id,
                         channel=Channel.forum,
                         source_url=href,
                         source_title=text[:200],
-                        source_body=f"ContractorTalk | {section_url.split('/')[-2]}",
+                        source_body=f"{forum_name} | {section_url.rstrip('/').split('/')[-1]}",
                     ))
             except Exception:
                 continue

@@ -1,5 +1,5 @@
 """
-Posts HackerNews comments as DatumPlus using session cookie auth.
+Posts HackerNews comments for the active product profile using session cookie auth.
 """
 import os
 import re

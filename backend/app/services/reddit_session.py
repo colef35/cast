@@ -7,7 +7,7 @@ import os
 import httpx
 from app.core.proxy import proxy_kwargs
 
-UA = os.environ.get("REDDIT_USER_AGENT", "DATUM+CAST/0.1 by u/ColeFar89")
+UA = os.environ.get("REDDIT_USER_AGENT", "CAST/0.1 by Low Level Logic")
 
 # OAuth2 state
 _oauth_token: str | None = None

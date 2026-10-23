@@ -111,7 +111,10 @@ class _SQLiteTable:
 
         if hasattr(self, "_updates"):
             set_clause = ", ".join([f"{k}=?" for k in self._updates])
-            update_vals = list(self._updates.values()) + vals
+            update_vals = [
+                json.dumps(v) if isinstance(v, (list, dict)) else v
+                for v in self._updates.values()
+            ] + vals
             conn.execute(f"UPDATE {self.table} SET {set_clause} {where_clause}", update_vals)
             conn.commit()
             rows = conn.execute(f"SELECT * FROM {self.table} {where_clause}", vals).fetchall()
@@ -132,12 +135,22 @@ class _SQLiteResult:
         self.data = data if not single else data
 
 
+# Columns stored as JSON text in SQLite (lists/dicts on the profile model).
+_JSON_COLUMNS = (
+    "keywords", "pitch_points", "proof_points", "problem_phrases",
+    "competitors", "blocked_communities", "buying_signals", "domain_signals",
+    "reject_signals", "free_tools",
+    "communities", "relevance_signals", "search_queries", "feature_map",
+    "voice", "guardrails",
+)
+
+
 def _row_to_dict(row, table: str) -> dict:
     if row is None:
         return None
     d = dict(row)
     # deserialize JSON columns
-    for col in ("keywords",):
+    for col in _JSON_COLUMNS:
         if col in d and isinstance(d[col], str):
             try:
                 d[col] = json.loads(d[col])
