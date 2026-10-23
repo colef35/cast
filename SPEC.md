@@ -21,7 +21,12 @@ Nothing in the engine knows or cares what the product is. DATUM+ was the first
 profile, not the product. A contractor, a SaaS founder, a plumber, and a
 novelty candle shop all run the same loop with different profiles.
 
-**Positioning line:** *CAST by Low Level Logic — marketing that listens first.*
+**Positioning line:** *CAST — marketing that listens first.*
+
+**Brand decision (Cole, 2026-10-22): CAST IS THE FACE.** The apex domain
+lowlevellogic.org is the CAST product site — CAST is the headline brand,
+sold straight as a legitimate marketing platform. Low Level Logic Labs is
+the maker (footer / about credit), never the headline.
 
 ## 2. Why this wins
 
@@ -122,9 +127,9 @@ customers install an APK. Android stays as the power-user client.
 **Target state:**
 | Host | Purpose | Served by |
 |---|---|---|
-| `lowlevellogic.org` | Company site — Low Level Logic Labs, CAST front door | Cloudflare Pages (from GitHub) |
+| `lowlevellogic.org` | **CAST product site — CAST is the face** (maker credit: Low Level Logic Labs) | Cloudflare Pages (from GitHub) |
 | `www.lowlevellogic.org` | Redirect to apex | Cloudflare |
-| `cast.lowlevellogic.org` | Product landing + pricing | Cloudflare Pages |
+| `cast.lowlevellogic.org` | Redirect to apex (CAST lives at the root) | Cloudflare |
 | `app.lowlevellogic.org` | Web queue + dashboard | Cloudflare Pages + Workers |
 | API backend | Existing Python backend, containerized | Off Railway (exit the breach surface); any container host, Cloudflare Tunnel in front |
 
@@ -176,7 +181,9 @@ its outcome. DATUM+ runs as profile #1 — a customer, not the codebase.
 1. Launch wedge: truly universal on day one, or construction/trades first
    (home turf, DATUM+ as proof) with the universal engine underneath?
    *Spec recommends: universal engine, trades-first marketing.*
-2. CAST stays the product name under Low Level Logic Labs? (Spec assumes yes.)
+2. ~~CAST stays the product name under Low Level Logic Labs?~~ **RESOLVED
+   (Cole, 2026-10-22): CAST is the face — it headlines lowlevellogic.org;
+   Low Level Logic Labs is the maker credit.**
 3. Android app: keep as companion, or freeze it and go web-first?
 4. Pricing tiers above — gut check.
 
