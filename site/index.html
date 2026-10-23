@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CAST — Marketing That Listens First</title>
-<meta name="description" content="CAST watches Reddit and the open web for people asking for exactly what you sell, drafts your reply in your voice, and posts it with your approval. Marketing that listens first.">
+<meta name="description" content="CAST watches Reddit for people asking what to buy, drafts your reply in your voice, and posts it with your approval. Watch it work.">
 <style>
   :root{
     --bg:#0b0f14; --panel:#111826; --panel2:#0e141f; --line:#1e2a3a;
     --text:#e8eef5; --muted:#93a4b8; --amber:#f5a623; --amber2:#ffb84d;
-    --green:#3ecf8e;
+    --green:#3ecf8e; --red:#ff6b6b;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
@@ -19,26 +19,34 @@
   .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
   .logo{font-size:26px;font-weight:800;letter-spacing:3px;color:var(--text)}
   .logo span{color:var(--amber)}
-  .nav-links a{color:var(--muted);margin-left:26px;font-size:15px}
+  .nav-links a{color:var(--muted);margin-left:24px;font-size:15px}
   .nav-links a:hover{color:var(--text)}
   .btn{display:inline-block;background:var(--amber);color:#131313;font-weight:700;padding:12px 26px;border-radius:8px;font-size:16px}
   .btn:hover{background:var(--amber2)}
   .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
-  .hero{padding:96px 0 72px;text-align:center}
-  .hero h1{font-size:56px;line-height:1.08;font-weight:800;letter-spacing:-1px}
+  .hero{padding:72px 0 64px;text-align:center}
+  .hero h1{font-size:52px;line-height:1.1;font-weight:800;letter-spacing:-1px;max-width:820px;margin:0 auto}
   .hero h1 em{font-style:normal;color:var(--amber)}
-  .hero p{color:var(--muted);font-size:20px;max-width:720px;margin:26px auto 36px}
+  .hero p{color:var(--muted);font-size:20px;max-width:720px;margin:24px auto 32px}
   .cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-  .fineprint{color:var(--muted);font-size:13px;margin-top:16px}
+  .video-shell{max-width:880px;margin:44px auto 0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#000;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .video-shell video{width:100%;display:block;aspect-ratio:16/9;background:#000}
+  .video-cap{color:var(--muted);font-size:14px;margin-top:14px}
   section{padding:72px 0;border-top:1px solid var(--line)}
   h2{font-size:34px;font-weight:800;letter-spacing:-.5px;margin-bottom:12px}
-  .sub{color:var(--muted);font-size:18px;max-width:680px;margin-bottom:40px}
+  .sub{color:var(--muted);font-size:18px;max-width:700px;margin-bottom:40px}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:28px}
   .card h3{font-size:19px;margin-bottom:8px}
   .card p{color:var(--muted);font-size:15px}
   .step-num{display:inline-block;background:var(--amber);color:#131313;font-weight:800;font-size:13px;padding:2px 10px;border-radius:20px;margin-bottom:14px;letter-spacing:1px}
-  .tag{display:inline-block;border:1px solid var(--line);background:var(--panel2);color:var(--amber2);border-radius:20px;padding:4px 14px;font-size:13px;font-weight:600;margin:0 6px 10px 0}
+  .chip{display:inline-block;border:1px solid var(--line);background:var(--panel2);color:var(--amber2);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;margin:0 6px 8px 0;letter-spacing:.4px}
+  .chip.green{color:var(--green)} .chip.red{color:var(--red)}
+  .post{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:18px;font-size:15px}
+  .post .meta{color:var(--muted);font-size:13px;margin-bottom:8px}
+  .draft{background:#0d1a12;border:1px solid #1d3325;border-radius:10px;padding:18px;font-size:15px}
+  .score{font-size:40px;font-weight:800;color:var(--green)}
+  .run-note{color:var(--muted);font-size:13px;margin-top:18px}
   .price-card{text-align:center}
   .price{font-size:44px;font-weight:800;margin:10px 0 2px}
   .price small{font-size:16px;color:var(--muted);font-weight:400}
@@ -47,9 +55,11 @@
   .price-card li::before{content:"✓ ";color:var(--green);font-weight:700}
   .featured{border-color:var(--amber)}
   .featured .badge{color:var(--amber);font-size:13px;font-weight:700;letter-spacing:2px}
+  .faq h3{font-size:17px;margin:26px 0 6px}
+  .faq p{color:var(--muted);font-size:15px;max-width:760px}
   footer{border-top:1px solid var(--line);padding:36px 0;color:var(--muted);font-size:14px}
   .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
-  @media(max-width:640px){.hero h1{font-size:38px}.nav-links{display:none}}
+  @media(max-width:640px){.hero h1{font-size:36px}.nav-links{display:none}}
 </style>
 </head>
 <body>
@@ -58,57 +68,104 @@
   <div class="wrap nav">
     <div class="logo">CAST<span>.</span></div>
     <nav class="nav-links">
-      <a href="#how">How it works</a>
-      <a href="#signals">Signals</a>
+      <a href="#run">A real run</a>
+      <a href="#who">Who it's for</a>
+      <a href="#trust">Why it's not spam</a>
       <a href="#pricing">Pricing</a>
-      <a href="#pricing" class="btn" style="padding:8px 18px;font-size:14px">Start listening</a>
+      <a href="#faq">FAQ</a>
     </nav>
   </div>
 </header>
 
 <div class="wrap hero">
-  <h1>Marketing that<br><em>listens first.</em></h1>
-  <p>Every day, people on Reddit and across the open web ask strangers what to buy.
-     CAST hears them. It finds the conversations where someone is looking for exactly
-     what you sell, drafts your reply in your voice — and nothing posts without your approval.</p>
-  <div class="cta-row">
-    <a class="btn" href="#pricing">Start listening — it's free</a>
-    <a class="btn ghost" href="#how">See how it works</a>
+  <h1>Your next customer is on Reddit <em>right now</em>, asking strangers what to buy.</h1>
+  <p>CAST hears them. It finds the person asking for exactly what you sell, writes your
+     reply in your voice, and waits for your thumbs-up before it posts. Watch it work —
+     this is the whole job, start to finish:</p>
+  <div class="video-shell">
+    <video id="demo" autoplay muted loop playsinline controls preload="auto"></video>
   </div>
-  <p class="fineprint">No spam. No bought followers. No posting into the void.</p>
+  <p class="video-cap">A plumber in his shop, a homeowner whose water heater just died, and CAST in the middle — signal, draft, approve, posted.</p>
+  <div class="cta-row" style="margin-top:28px">
+    <a class="btn" href="#pricing">Start listening — it's free</a>
+    <a class="btn ghost" href="#run">See a run, step by step</a>
+  </div>
 </div>
 
-<section id="how">
+<section id="run">
   <div class="wrap">
-    <h2>Cast a net where the fish already are</h2>
-    <p class="sub">Ads shout at everyone and hope. CAST listens for the people already raising their hand — then helps you answer like a human, at machine speed.</p>
+    <h2>One run, start to finish</h2>
+    <p class="sub">No mockups of features that don't exist — this is the exact flow from the video, with the actual artifacts CAST produces at each step.</p>
     <div class="grid">
-      <div class="card"><span class="step-num">1 · LISTEN</span><h3>Always on watch</h3><p>CAST monitors the communities where your buyers decide — starting with Reddit — for your keywords, your competitors, and the problems your product solves.</p></div>
-      <div class="card"><span class="step-num">2 · SCORE</span><h3>Intent, ranked</h3><p>Every conversation is scored by buying intent. "What do you guys use for X?" outranks a hundred casual mentions. Noise gets dropped, not delivered.</p></div>
-      <div class="card"><span class="step-num">3 · DRAFT</span><h3>Your voice, written for you</h3><p>CAST drafts a genuinely helpful reply in your voice — helpful first, product second. Two or three variants, ready when you are.</p></div>
-      <div class="card"><span class="step-num">4 · APPROVE</span><h3>You're the boss</h3><p>Every reply lands in your queue. Approve it, edit it, or kill it. Nothing ever posts behind your back — until you set the rules that let it.</p></div>
-      <div class="card"><span class="step-num">5 · ENGAGE</span><h3>Posted right</h3><p>Replies go out inside each community's rules and rate limits, with disclosure controls you set. Built to earn trust, not bans.</p></div>
-      <div class="card"><span class="step-num">6 · LEARN</span><h3>Smarter every week</h3><p>CAST tracks every reply's life — upvotes, responses, removals, sales — and feeds it back into the scoring. Your net learns where your fish bite.</p></div>
+      <div class="card">
+        <span class="step-num">STEP 1 · THE SIGNAL</span>
+        <h3>Somebody raises their hand</h3>
+        <div class="post">
+          <div class="meta">r/Austin · u/AustinHomeowner23 · 12 min ago</div>
+          "Water heater died this morning. Acme Plumbing came out Tuesday, charged me a service fee, and hasn't answered since. Who in Austin actually shows up and does these right? Need recommendations."
+        </div>
+        <p style="margin-top:14px">CAST is watching this community because Johnson's Plumbing works Austin water heaters. This post is not noise — it's a job, mid-air, with a competitor's name on it.</p>
+      </div>
+      <div class="card">
+        <span class="step-num">STEP 2 · CAST'S READ</span>
+        <h3>Scored before you ever see it</h3>
+        <p><span class="score">0.92</span> &nbsp;buying intent</p>
+        <p style="margin:10px 0">
+          <span class="chip">ASKING FOR RECOMMENDATIONS</span>
+          <span class="chip red">COMPETITOR PAIN</span>
+          <span class="chip green">LOCAL · TODAY · URGENT</span>
+        </p>
+        <p>Thousands of posts get scanned and dropped. CAST only surfaces the ones where a real person is ready to spend money — and tells you <em>why</em> it scored them.</p>
+      </div>
+      <div class="card">
+        <span class="step-num">STEP 3 · THE DRAFT</span>
+        <h3>Written in the owner's voice</h3>
+        <div class="draft">
+          "Hey u/AustinHomeowner23, sorry to hear about your experience with Acme — that's frustrating. I run Johnson's Plumbing here in Austin and we specialize in fast water heater replacements, usually same-day, with upfront pricing and no hidden fees. Happy to get it sorted — feel free to DM me for a free estimate."
+        </div>
+        <p style="margin-top:14px">Helpful first, product second. No hype, no hard sell — it reads like the owner typed it between jobs, because it's built from how he actually talks.</p>
+      </div>
+      <div class="card">
+        <span class="step-num">STEP 4 · APPROVE &amp; LEARN</span>
+        <h3>One tap. Then CAST keeps score.</h3>
+        <p>The draft waits in the queue. The owner glances at it on his laptop, hits <strong>Approve &amp; Post</strong>, and gets back to work. CAST posts it inside the subreddit's rules, then tracks everything that comes back — upvotes, replies, the DM asking for the estimate — and feeds it into the next score.</p>
+        <p style="margin-top:12px">Nothing ever posts without that tap, until the owner sets rules that say otherwise for a community he trusts.</p>
+      </div>
+    </div>
+    <p class="run-note">The run above is a composite example built from the flow shown in the video — the product, the queue, and the scoring are real; the plumber is every owner CAST is being built for.</p>
+  </div>
+</section>
+
+<section id="who">
+  <div class="wrap">
+    <h2>Built for people who need to get their product out there</h2>
+    <p class="sub">If your customers ask the internet before they buy, CAST is your ears. The moment it catches sounds different for everybody:</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Trades &amp; local services</h3>
+        <p>Plumbers, roofers, HVAC, remodelers. Your next job is a neighbor posting <em>"who do you trust for…?"</em> in a local subreddit at 7 AM. CAST has your reply drafted before your first coffee's gone.</p>
+      </div>
+      <div class="card">
+        <h3>Makers &amp; product sellers</h3>
+        <p>Candles, tools, gear, niche anything. Your buyers compare and confess in hobby communities every day — <em>"what's actually worth the money?"</em> CAST puts your product in that conversation the right way: helpfully, by name, with proof.</p>
+      </div>
+      <div class="card">
+        <h3>Apps &amp; indie software</h3>
+        <p>Your competitor's users vent in public. <em>"I'm done with [rival], what else is there?"</em> is the highest-value sentence on the internet for you. CAST scores it, drafts the honest answer, and hands it to you while the thread is still warm.</p>
+      </div>
     </div>
   </div>
 </section>
 
-<section id="signals">
+<section id="trust">
   <div class="wrap">
-    <h2>The moments CAST catches</h2>
-    <p class="sub">These are the conversations that sell products. They happen every hour. Your competitors aren't in them. You could be.</p>
-    <div>
-      <span class="tag">"What do you guys use for…?"</span>
-      <span class="tag">"I'm done with [competitor]…"</span>
-      <span class="tag">"How do I fix…?"</span>
-      <span class="tag">"Is [product] worth it?"</span>
-      <span class="tag">"Switching from X, what should I…?"</span>
-      <span class="tag">"This keeps breaking on me…"</span>
-    </div>
-    <div class="grid" style="margin-top:28px">
-      <div class="card"><h3>Not a scheduler</h3><p>Posting content on a calendar and hoping is not marketing. CAST only speaks when a real buying signal fires.</p></div>
-      <div class="card"><h3>Not a spam cannon</h3><p>Auto-posters get accounts banned and brands torched. CAST checks community rules before it drafts a word, and a human approves every post.</p></div>
-      <div class="card"><h3>Not a $2,000/mo agency</h3><p>Agencies run this exact loop by hand and charge retainer prices for it. CAST is that loop, as software, at software prices.</p></div>
+    <h2>Why this isn't spam</h2>
+    <p class="sub">The internet is drowning in bots shouting into threads. CAST is built the opposite way — and that's exactly why it works.</p>
+    <div class="grid">
+      <div class="card"><h3>A human holds the leash</h3><p>Every reply waits for a person's approval. CAST works for you — it doesn't post as you behind your back.</p></div>
+      <div class="card"><h3>Community rules, checked first</h3><p>Self-promo ratios, account standing, no-go communities — CAST reads the room's rules before it drafts a single word.</p></div>
+      <div class="card"><h3>Honest by default</h3><p>Disclosure controls live in your profile. Helpful first, product second, never an astroturfed review or a fake customer story.</p></div>
+      <div class="card"><h3>Paced like a person</h3><p>Rate limits with a human rhythm, and a ban-risk meter on every account. CAST slows down before a platform has to slow it down for you.</p></div>
     </div>
   </div>
 </section>
@@ -128,7 +185,7 @@
           <li>Reddit monitoring</li>
           <li>Daily signal digest</li>
         </ul>
-        <a class="btn ghost" href="#pricing">Start free</a>
+        <a class="btn ghost" href="https://github.com/colef35/cast">Start free</a>
       </div>
       <div class="card price-card featured">
         <div class="badge">MOST POPULAR</div>
@@ -137,12 +194,12 @@
         <p style="color:var(--muted)">Signals become customers</p>
         <ul>
           <li>Everything in Listener</li>
-          <li>AI-drafted replies in your voice</li>
+          <li>Drafted replies in your voice</li>
           <li>Approval queue (web + mobile)</li>
           <li>Community rule checks</li>
           <li>Outcome tracking</li>
         </ul>
-        <a class="btn" href="#pricing">Start Engager</a>
+        <a class="btn" href="https://github.com/colef35/cast">Start Engager</a>
       </div>
       <div class="card price-card">
         <h3>Autopilot</h3>
@@ -155,17 +212,33 @@
           <li>More platforms, incl. X &amp; LinkedIn</li>
           <li>Conversion tracking</li>
         </ul>
-        <a class="btn ghost" href="#pricing">Go Autopilot</a>
+        <a class="btn ghost" href="https://github.com/colef35/cast">Go Autopilot</a>
       </div>
     </div>
   </div>
 </section>
 
+<section id="faq" class="faq">
+  <div class="wrap">
+    <h2>Straight answers</h2>
+    <h3>Is this just a spam bot with better manners?</h3>
+    <p>No. Spam blasts the same pitch at everyone. CAST listens for people who are actively asking, writes a reply that answers their actual question, and shows it to you before anything posts. If a community doesn't welcome it, CAST doesn't send it.</p>
+    <h3>Will this get my Reddit account banned?</h3>
+    <p>That risk is the whole reason the leash exists. Rule checks before drafting, human approval before posting, human pacing, and a ban-risk meter that throttles CAST before any platform does. Accounts get banned for spraying; CAST doesn't spray.</p>
+    <h3>Do I have to write anything?</h3>
+    <p>No. You give CAST your product and a few samples of how you talk. It drafts, you tap approve. Most owners spend a few minutes a day in the queue — usually with coffee, usually smiling at what it caught overnight.</p>
+    <h3>What platforms does it watch?</h3>
+    <p>Reddit first, because that's where the buying questions live. Hacker News, Bluesky, and YouTube comments are next; X and LinkedIn land on the Autopilot tier.</p>
+    <h3>When can I start?</h3>
+    <p>CAST is in early access, being built in the open. The build is public — follow it, request access, and the first cohort comes from the people watching it happen.</p>
+  </div>
+</section>
+
 <section>
   <div class="wrap" style="text-align:center">
-    <h2>Your next customer is asking a stranger<br>what to buy. Right now.</h2>
-    <p class="sub" style="margin-left:auto;margin-right:auto">Be the answer they get.</p>
-    <a class="btn" href="#pricing">Start listening — it's free</a>
+    <h2>Somebody is asking what to buy<br>in your market today.</h2>
+    <p class="sub" style="margin-left:auto;margin-right:auto">Be the answer they get — with a reply that sounds like you on your best day.</p>
+    <a class="btn" href="https://github.com/colef35/cast">Get early access</a>
   </div>
 </section>
 
@@ -175,6 +248,22 @@
     <div>Built by Low Level Logic Labs · Louisburg, Kansas · © 2026</div>
   </div>
 </footer>
+
+<script>
+(function(){
+  var v = document.getElementById('demo');
+  var parts = ['assets/cast-demo.b64.00','assets/cast-demo.b64.01','assets/cast-demo.b64.02','assets/cast-demo.b64.03','assets/cast-demo.b64.04','assets/cast-demo.b64.05','assets/cast-demo.b64.06'];
+  Promise.all(parts.map(function(p){ return fetch(p).then(function(r){ return r.text(); }); }))
+  .then(function(chunks){ return chunks.join(''); }).then(function(b64){
+    var bin = atob(b64.replace(/\s+/g,'')), len = bin.length, bytes = new Uint8Array(len);
+    for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+    v.src = URL.createObjectURL(new Blob([bytes], {type:'video/mp4'}));
+    v.play().catch(function(){});
+  }).catch(function(){
+    v.outerHTML = '<div style="padding:48px 24px;text-align:center;color:#93a4b8">Watch CAST work — <a href="https://github.com/colef35/cast">see the live build</a></div>';
+  });
+})();
+</script>
 
 </body>
 </html>
